@@ -1,0 +1,18 @@
+{
+  // No `metals.javaHome` here on purpose: a /nix/store path is pinned to one
+  // build and breaks the day nixpkgs moves. direnv exports JAVA_HOME from the
+  // flake instead, and Metals picks it up from the environment.
+  "metals.defaultBspToBuildTool": true,
+  "files.exclude": {
+    "**/target": true,
+    "**/.bloop": true,
+    "**/.bsp": true,
+    "**/.metals": true,
+    "**/.venv": true
+  },
+  // The corpus is a read-only copy of Sail's tests: out of search, and never
+  // formatted.
+  "search.exclude": { "sail-features/**": true },
+  "editor.formatOnSave": true,
+  "[scala]": { "editor.defaultFormatter": "scalameta.metals" }
+}
