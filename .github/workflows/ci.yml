@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The feature corpus is a submodule. Without this it arrives empty
+          # and the corpus job reports zero scenarios instead of failing
+          # loudly, which is worse.
+          submodules: recursive
+      - uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      # Without this every run re-downloads the Spark Connect client.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/coursier
+            ~/.sbt
+          key: sbt-${{ runner.os }}-${{ hashFiles('build.sbt', 'versions.json') }}
+          restore-keys: sbt-${{ runner.os }}-
+      # The Sail server venv depends only on the declared versions.
+      - uses: actions/cache@v4
+        with:
+          path: .venv
+          key: sail-${{ runner.os }}-${{ hashFiles('versions.json') }}
+      - run: nix develop --command sbt -batch test
+      # A report, not a gate: it exits 0 whatever it finds.
+      - run: nix develop --command sbt -batch corpus
+      - run: nix develop --command scalafmt --test .

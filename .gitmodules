@@ -1,0 +1,3 @@
+[submodule "sail-features"]
+	path = sail-features
+	url = https://github.com/lakehq/sail.git

@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # Dependabot has no sbt support: its JVM ecosystems are maven and gradle.
+  # Scala dependencies are handled by Scala Steward.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels: ["dependencies"]
