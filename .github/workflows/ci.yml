@@ -15,7 +15,7 @@ jobs:
           # and the corpus job reports zero scenarios instead of failing
           # loudly, which is worse.
           submodules: recursive
-      - uses: cachix/install-nix-action@v30
+      - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
