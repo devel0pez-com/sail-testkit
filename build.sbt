@@ -16,6 +16,17 @@ ThisBuild / homepage := Some(url("https://github.com/devel0pez-com/sail-testkit"
 ThisBuild / licenses := Seq(
   "Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")
 )
+// Goes into the POM, where a consumer's build tool reads it to decide whether a
+// version bump it resolved is a compatible one or a break it should complain
+// about. Left unset, sbt warns on every publish and downstream eviction checks
+// have nothing to go on.
+//
+// `early-semver`, not `semver-spec`: under strict semver every 0.x release is
+// allowed to break everything, so a `0.1.0` -> `0.1.1` bump would carry no
+// promise at all. early-semver keeps the patch digit meaningful before 1.0.0 —
+// `0.1.z` stays compatible, `0.2.0` is where things may move — which is the
+// promise this project can actually keep while the API is still settling.
+ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scmInfo := Some(
   ScmInfo(
     url("https://github.com/devel0pez-com/sail-testkit"),
