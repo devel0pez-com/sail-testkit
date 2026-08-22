@@ -40,6 +40,41 @@ final class SailServerSpec extends AnyFunSuite with Matchers {
     }
   }
 
+  test("quotes what the server said when it dies on startup") {
+    // Sail explains itself on stderr. Before this was captured the failure read
+    // "exited while starting up (code 1)" and the reason died with the pipe.
+    val fake = stubBinary(
+      """|#!/bin/sh
+         |echo "error: failed to bind: Address already in use (os error 48)" >&2
+         |exit 1
+         |""".stripMargin
+    )
+
+    val error = intercept[IllegalStateException] {
+      withEnv("SAIL_BIN" -> fake)(SailServer.start())
+    }
+
+    error.getMessage should include("Address already in use")
+  }
+
+  test("a server that starts keeps its output available") {
+    SailServer.withServer { server =>
+      // Not asserting on the text: what Sail logs at startup is its business
+      // and would make this a test of Sail's log format. That it arrives at all
+      // is the contract, and it is what proves the pipe is being drained.
+      server.recentOutput should not be empty
+    }
+  }
+
+  /** Writes an executable stand-in for the Sail binary and returns its path. */
+  private def stubBinary(script: String): String = {
+    val path = java.nio.file.Files.createTempFile("fake-sail", "")
+    java.nio.file.Files.write(path, script.getBytes("UTF-8"))
+    path.toFile.setExecutable(true)
+    path.toFile.deleteOnExit()
+    path.toString
+  }
+
   test("says what to install when the binary is missing") {
     val error = intercept[IllegalStateException] {
       withEnv("SAIL_BIN" -> "sail-that-does-not-exist")(SailServer.start())

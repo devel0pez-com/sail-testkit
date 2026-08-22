@@ -23,6 +23,21 @@ ThisBuild / scmInfo := Some(
     Some("scm:git:git@github.com:devel0pez-com/sail-testkit.git")
   )
 )
+// Publishing goes through the Central Portal. It is not the plugin's default:
+// it still points at oss.sonatype.org, the legacy OSSRH, which stopped taking
+// new namespaces when it was sunset. Left unset, `sbt ci-release` stages into a
+// host that will never publish this and says little about why.
+// Credentials go to the Central Portal, not to the legacy OSSRH the plugin
+// still defaults to.
+ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost
+
+// sbt-ci-release ends a tagged release by running `sonaRelease`, a command no
+// published version of sbt-sonatype defines: without this the build signs and
+// stages correctly and then dies on the last step with "Not a valid command".
+// `sonatypeCentralRelease` is the Central Portal equivalent, and it uploads the
+// same bundle directory that ci-release staged into.
+addCommandAlias("sonaRelease", "sonatypeCentralRelease")
+
 ThisBuild / developers := List(
   Developer(
     id = "davidlghellin",
@@ -78,7 +93,6 @@ lazy val root = (project in file("."))
       "io.cucumber" % "cucumber-junit" % "7.34.7" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test
     ),
-    // Every suite starts a real server: they cannot share a port.
     // The corpus is a report, not a gate: it runs Sail's own feature files
     // through a JVM client and says what came out. It is excluded from `test`
     // so an upstream failure nobody can fix here cannot block a release, and
@@ -91,6 +105,9 @@ lazy val root = (project in file("."))
       val _ = (Test / testOnly).toTask(" com.devel0pez.sail.testkit.SailCorpusTest").result.value
       streams.value.log.info("corpus report: target/corpus-report.{html,json}")
     },
+    // Every suite starts a real server on its own port; running them at once
+    // would put several Sail processes and their Arrow buffers in flight
+    // together for no gain.
     Test / parallelExecution := false,
     Test / fork := true,
     Test / javaOptions ++= jvmOptions,

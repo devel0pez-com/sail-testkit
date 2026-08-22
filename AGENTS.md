@@ -51,6 +51,29 @@ Re-check before changing anything that depends on them.
   and the GitHub URL is only POM metadata. `io.github.*` would have tied them.
 - **Apache-2.0**, matching Sail. Sail requires no CLA or DCO, so a future
   donation is a repo transfer and nothing more.
+- **The Sail server comes from `pip`, not from nixpkgs.** `pysail` has been in
+  nixpkgs since 0.7.0, and there is a top-level `sail` too, so this is a choice
+  and not a gap. Three reasons, heaviest first. The wheel is the binary Sail's
+  users actually run; nixpkgs builds from the release tarball instead, and a
+  divergence found in an engine we compiled ourselves is one LakeSail cannot
+  reproduce — which is the entire premise of the corpus. It is also absent from
+  `cache.nixos.org` for `aarch64-darwin`, so `nix develop` would compile
+  DataFusion and Sail on the spot instead of fetching a 48 MB wheel. And nixpkgs
+  carries `pyspark` 4.1.2 while `versions.json` pins 4.2.0: since Sail reads its
+  Spark version from that module, an all-nix shell would run a server that
+  believes it is 4.1.2 against a 4.2.0 client.
+
+  Underneath all three: with nixpkgs the *channel* decides the Sail version. A
+  `flake.lock` bump could move it away from the corpus submodule pinned at
+  `v0.7.0`, which is the desync that produced 96 phantom divergences.
+  `versions.json` has to keep that authority.
+
+  The price paid is an impure devshell — `pip install` reaches the network at
+  startup, and `flake.nix` carries stamp logic to catch a half-finished install.
+  If that ever becomes the bigger problem, the answer is a derivation in this
+  flake built from the PyPI **wheel** at the version in `versions.json`: pure
+  and hash-pinned, without ceding the version or changing the binary. Not
+  nixpkgs.
 - **English throughout.** Unlike the sibling templates, this is public-facing
   to the Sail community.
 
@@ -109,8 +132,8 @@ was not.
 
 ## Comparing types across the whole corpus
 
-The corpus asserts a type only where a scenario says `query schema` — 853 of
-its ~4.900. Everywhere else it compares rows as text, so `decimal(29,2)` and
+The corpus asserts a type only where a scenario says `query schema` — 901 of
+its 4.972. Everywhere else it compares rows as text, so `decimal(29,2)` and
 `decimal(20,2)` render identically and pass. To cover the rest:
 
 ```bash

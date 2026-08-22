@@ -25,7 +25,7 @@ jobs:
           path: |
             ~/.cache/coursier
             ~/.sbt
-          key: sbt-${{ runner.os }}-${{ hashFiles('build.sbt', 'versions.json') }}
+          key: sbt-${{ runner.os }}-${{ hashFiles('build.sbt', 'versions.json', 'project/plugins.sbt', 'project/build.properties') }}
           restore-keys: sbt-${{ runner.os }}-
       # The Sail server venv depends only on the declared versions.
       - uses: actions/cache@v4

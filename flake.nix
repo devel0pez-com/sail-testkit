@@ -26,8 +26,10 @@
 
         python = pkgs.python312;
 
-        # Sail is a Rust binary shipped as a Python wheel and is not in
-        # nixpkgs, so a small venv is the only way to get it. `pyspark` goes in
+        # Sail is a Rust binary shipped as a Python wheel. nixpkgs does have
+        # `pysail`, but it builds it from source, ships no darwin binary for it
+        # and pairs it with an older `pyspark`, so this venv is a decision and
+        # not a workaround — the reasoning is in AGENTS.md. `pyspark` goes in
         # next to it on purpose: Sail reads the Spark version from that module,
         # and without it `spark.version` fails with ModuleNotFoundError.
         venvSail = ''

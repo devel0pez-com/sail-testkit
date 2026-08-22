@@ -41,6 +41,34 @@ SailServer.withServer { server =>
 }
 ```
 
+## Configuring the session
+
+`SailSuite` does not set ANSI mode, a time zone, or anything else that changes
+what a query means. Those are your project's decisions, and a test kit that
+quietly made them would be answering a question nobody asked it. Override the
+hook instead of reimplementing the startup:
+
+```scala
+class MyEtlSpec extends AnyFunSuite with SailSuite {
+  override protected def configureSession(session: SparkSession): Unit =
+    session.conf.set("spark.sql.ansi.enabled", "true")
+}
+```
+
+## When the server misbehaves
+
+Sail logs to stderr, on the far side of a pipe nothing on the JVM would
+otherwise show you. The kit keeps the last lines and puts them in the failure,
+so a server that dies during startup says why:
+
+```
+The Sail server exited while starting up (code 1). It printed:
+  error: failed to bind: Address already in use (os error 48)
+```
+
+For a server that came up and is behaving oddly, `sailServer.recentOutput`
+returns the same tail while the suite runs.
+
 ## What will not run, and why
 
 Pointing an existing suite at Sail works for far more than you would guess, but
