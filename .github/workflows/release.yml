@@ -1,11 +1,20 @@
 name: release
 
-# Publishes to Maven Central when a v* tag is pushed, and a -SNAPSHOT on every
-# push to main. sbt-ci-release works out which from the tag.
+# Tags only. A release is a deliberate act, so it is spelled as one: nothing
+# publishes because a branch moved.
+#
+# The tag must start with `v` — Central rejects a non-SNAPSHOT version published
+# without it. sbt-dynver reads the version from the tag, so `v0.1.0-M1` becomes
+# `0.1.0-M1`, a real and permanent release, not a draft.
+#
+# `workflow_dispatch` keeps the one thing the old `push: branches` trigger was
+# good for: run it by hand on an untagged commit and dynver produces a
+# `-SNAPSHOT`, which exercises credentials, signing and upload without putting
+# an immutable version on Central. Worth doing once before the first real tag.
 on:
   push:
-    branches: [main, master]
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   publish:
