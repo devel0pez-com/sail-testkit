@@ -18,8 +18,8 @@ import org.apache.spark.sql.DataFrame
 final class QuerySteps extends ScalaDsl with EN {
 
   private var result: Try[DataFrame] = Failure(new IllegalStateException("no query yet"))
-  private var finales: Seq[String] = Nil
-  private var configTocada: Seq[(String, Option[String])] = Nil
+  private var finalStatements: Seq[String] = Nil
+  private var touchedConfig: Seq[(String, Option[String])] = Nil
 
   private def spark = SailWorld.spark
 
@@ -86,42 +86,42 @@ final class QuerySteps extends ScalaDsl with EN {
     * 2]`, a trailing `.0` on a timestamp) counts as a divergence that is ours, not Sail's. Asking
     * the server for the text sidesteps both.
     */
-  private def tablaMostrada(d: DataFrame): Seq[Seq[String]] = {
+  private def shownTable(d: DataFrame): Seq[Seq[String]] = {
     val buffer = new java.io.ByteArrayOutputStream()
     Console.withOut(new java.io.PrintStream(buffer, true, "UTF-8")) {
       d.show(Int.MaxValue, truncate = false)
     }
-    parsearShow(buffer.toString("UTF-8"))
+    parseShow(buffer.toString("UTF-8"))
   }
 
   /** Splits `show()` output into cells using the `+` positions of the border, the same way Sail's
     * `parse_show_string` does.
     */
-  private def parsearShow(texto: String): Seq[Seq[String]] = {
-    val lineas = texto.linesIterator.filter(_.trim.nonEmpty).toIndexedSeq
-    if (lineas.length < 3) return Seq.empty
-    val borde = lineas.head
-    val posiciones = borde.zipWithIndex.collect { case ('+', i) => i }
-    def celdas(linea: String): Seq[String] =
-      posiciones
+  private def parseShow(text: String): Seq[Seq[String]] = {
+    val lines = text.linesIterator.filter(_.trim.nonEmpty).toIndexedSeq
+    if (lines.length < 3) return Seq.empty
+    val border = lines.head
+    val positions = border.zipWithIndex.collect { case ('+', i) => i }
+    def cells(line: String): Seq[String] =
+      positions
         .sliding(2)
         .collect { case Seq(a, b) =>
-          if (a + 1 <= linea.length) linea.slice(a + 1, math.min(b, linea.length)).trim else ""
+          if (a + 1 <= line.length) line.slice(a + 1, math.min(b, line.length)).trim else ""
         }
         .toSeq
-    // borde, cabecera, borde, datos..., borde
-    (Seq(celdas(lineas(1))) ++ lineas.slice(3, lineas.length - 1).map(celdas)).toSeq
+    // border, header, border, datos..., border
+    (Seq(cells(lines(1))) ++ lines.slice(3, lines.length - 1).map(cells)).toSeq
   }
 
   /** For `query result collected`, which does go through collect(). */
-  private def valorColeccionado(value: Any): String = value match {
+  private def collectedValue(value: Any): String = value match {
     case null       => "NULL"
     case b: Boolean => b.toString.toLowerCase
     case other      => String.valueOf(other)
   }
 
-  private def esperado(table: DataTable): (Seq[String], Seq[Seq[String]]) = {
-    val todo = table
+  private def expected(table: DataTable): (Seq[String], Seq[Seq[String]]) = {
+    val all = table
       .asLists(classOf[String])
       .asScala
       .toSeq
@@ -129,34 +129,34 @@ final class QuerySteps extends ScalaDsl with EN {
       // null. Turning that into "NULL" made every empty-string expectation
       // look like a NULL that the engine failed to produce.
       .map(_.asScala.toSeq.map(c => if (c == null) "" else c.trim))
-    (todo.head, todo.tail)
+    (all.head, all.tail)
   }
 
-  private def comparar(table: DataTable, ordered: Boolean): Unit = {
-    val (cabecera, filas) = esperado(table)
-    val mostrado = tablaMostrada(df)
-    assert(mostrado.nonEmpty, "show() produced no table")
-    val (cabeceraReal, filasReales) = (mostrado.head, mostrado.tail)
+  private def compare(table: DataTable, ordered: Boolean): Unit = {
+    val (header, rows) = expected(table)
+    val shown = shownTable(df)
+    assert(shown.nonEmpty, "show() produced no table")
+    val (actualHeader, actualRows) = (shown.head, shown.tail)
     assert(
-      cabecera == cabeceraReal,
-      s"columns differ\n  expected: $cabecera\n  actual:   $cabeceraReal"
+      header == actualHeader,
+      s"columns differ\n  expected: $header\n  actual:   $actualHeader"
     )
     val (e, a) =
-      if (ordered) (filas, filasReales)
-      else (filas.sortBy(_.toString), filasReales.sortBy(_.toString))
+      if (ordered) (rows, actualRows)
+      else (rows.sortBy(_.toString), actualRows.sortBy(_.toString))
     assert(e == a, s"rows differ\n  expected: $e\n  actual:   $a")
   }
 
-  private def compararColeccionado(table: DataTable, ordered: Boolean): Unit = {
-    val (cabecera, filas) = esperado(table)
-    val reales =
-      df.collect().toSeq.map(f => (0 until f.length).map(i => valorColeccionado(f.get(i))))
+  private def compareCollected(table: DataTable, ordered: Boolean): Unit = {
+    val (header, rows) = expected(table)
+    val actual =
+      df.collect().toSeq.map(f => (0 until f.length).map(i => collectedValue(f.get(i))))
     assert(
-      cabecera == df.columns.toSeq,
-      s"columns differ\n  expected: $cabecera\n  actual:   ${df.columns.toSeq}"
+      header == df.columns.toSeq,
+      s"columns differ\n  expected: $header\n  actual:   ${df.columns.toSeq}"
     )
     val (e, a) =
-      if (ordered) (filas, reales) else (filas.sortBy(_.toString), reales.sortBy(_.toString))
+      if (ordered) (rows, actual) else (rows.sortBy(_.toString), actual.sortBy(_.toString))
     assert(e == a, s"rows differ\n  expected: $e\n  actual:   $a")
   }
 
@@ -164,10 +164,10 @@ final class QuerySteps extends ScalaDsl with EN {
     * SQL because that is the only way to express what these scenarios are about — how a null
     * literal keeps its type.
     */
-  When("""^dataframe for (.+)$""") { (caso: String) =>
+  When("""^dataframe for (.+)$""") { (kase: String) =>
     import org.apache.spark.sql.functions.{col, lit, to_timestamp, try_to_timestamp}
     val r = spark.range(1)
-    val d = caso match {
+    val d = kase match {
       case "null literal" => r.select(lit(null).as("result"))
       case "null literal alias projection" =>
         r.select(lit(null).as("value")).select(col("value").as("result"))
@@ -187,7 +187,7 @@ final class QuerySteps extends ScalaDsl with EN {
         r.selectExpr("to_timestamp_ntz(NULL, 'yyyy-MM-dd') AS result")
       case "to_timestamp_ntz value with null format" =>
         r.selectExpr("to_timestamp_ntz('2024-01-02', NULL) AS result")
-      case otro => throw new AssertionError(s"unknown DataFrame case: $otro")
+      case other => throw new AssertionError(s"unknown DataFrame case: $other")
     }
     result = Success(d)
   }
@@ -206,28 +206,28 @@ final class QuerySteps extends ScalaDsl with EN {
     * messages want it bare. The directory is deliberately not created: the statement under test is
     * what creates it.
     */
-  private final class RutaVar(val ruta: java.nio.file.Path) {
-    def string: String = ruta.toString
-    def sql: String = "'" + ruta.toString.replace("'", "''") + "'"
-    def uri: String = "'" + ruta.toAbsolutePath.toUri.toString + "'"
-    def fileUri: String = ruta.toAbsolutePath.toUri.toString
-    def prop(nombre: String): String = nombre match {
+  private final class PathVar(val path: java.nio.file.Path) {
+    def string: String = path.toString
+    def sql: String = "'" + path.toString.replace("'", "''") + "'"
+    def uri: String = "'" + path.toAbsolutePath.toUri.toString + "'"
+    def fileUri: String = path.toAbsolutePath.toUri.toString
+    def prop(name: String): String = name match {
       case "string"   => string
       case "sql"      => sql
       case "uri"      => uri
       case "file_uri" => fileUri
-      case otro       => throw new AssertionError(s"unknown path property: $otro")
+      case other       => throw new AssertionError(s"unknown path property: $other")
     }
   }
 
-  private var variables: Map[String, RutaVar] = Map.empty
+  private var variables: Map[String, PathVar] = Map.empty
 
   /** One temporary root per scenario, the equivalent of pytest's `tmp_path`. */
-  private lazy val raizTemporal: java.nio.file.Path =
+  private lazy val temporaryRoot: java.nio.file.Path =
     java.nio.file.Files.createTempDirectory("sail-testkit-")
 
-  Given("""^variable (\S+) for temporary directory (\S+)$""") { (nombre: String, dir: String) =>
-    variables = variables + (nombre -> new RutaVar(raizTemporal.resolve(dir)))
+  Given("""^variable (\S+) for temporary directory (\S+)$""") { (name: String, dir: String) =>
+    variables = variables + (name -> new PathVar(temporaryRoot.resolve(dir)))
   }
 
   /** Renders the `{{ name.property }}` subset of Jinja that the corpus uses.
@@ -235,9 +235,9 @@ final class QuerySteps extends ScalaDsl with EN {
     * Not a template engine: the corpus only ever asks for a path rendered one of four ways, and
     * pulling in a real Jinja port for that would be a dependency in a test kit that ships none.
     */
-  private def renderizar(texto: String): String =
+  private def render(text: String): String =
     """\{\{\s*(\w+)\.(\w+)\s*\}\}""".r.replaceAllIn(
-      texto,
+      text,
       m => {
         val v = variables.getOrElse(
           m.group(1),
@@ -248,33 +248,33 @@ final class QuerySteps extends ScalaDsl with EN {
     )
 
   Given("""statement template""") { (sql: String) =>
-    spark.sql(renderizar(repararEscapes(sql))).collect()
+    spark.sql(render(repairEscapes(sql))).collect()
   }
 
   When("""query template""") { (sql: String) =>
-    result = Try(spark.sql(renderizar(repararEscapes(sql))))
+    result = Try(spark.sql(render(repairEscapes(sql))))
   }
 
   Given("""final statement template""") { (sql: String) =>
-    finales = finales :+ renderizar(repararEscapes(sql))
+    finalStatements = finalStatements :+ render(repairEscapes(sql))
   }
 
   Given("""statement""") { (sql: String) =>
-    spark.sql(repararEscapes(sql)).collect()
+    spark.sql(repairEscapes(sql)).collect()
   }
 
   /** Registered up front, run when the scenario ends: the corpus uses it for `DROP TABLE IF
     * EXISTS`, so a scenario cannot poison the next one.
     */
   Given("""final statement""") { (sql: String) =>
-    finales = finales :+ sql
+    finalStatements = finalStatements :+ sql
   }
 
   /** Where the running scenario lives, so its source line can be read back. */
-  private var origen: Option[(java.net.URI, Int)] = None
+  private var source: Option[(java.net.URI, Int)] = None
 
   Before { (s: io.cucumber.scala.Scenario) =>
-    origen = Some((s.getUri, s.getLine))
+    source = Some((s.getUri, s.getLine))
   }
 
   /** Puts back the backslashes Cucumber ate on the way in.
@@ -290,43 +290,43 @@ final class QuerySteps extends ScalaDsl with EN {
     * Doubling every backslash in the SQL would break the 164 single ones and the 28 pairs that live
     * in docstrings and work fine today.
     */
-  private def repararEscapes(sql: String): String = origen match {
+  private def repairEscapes(sql: String): String = source match {
     case None => sql
-    case Some((uri, linea)) =>
-      val reparado =
+    case Some((uri, line)) =>
+      val repaired =
         try {
-          val fichero = java.nio.file.Paths.get(uri)
-          val lineas = java.nio.file.Files.readAllLines(fichero)
-          if (linea < 1 || linea > lineas.size) sql
+          val file = java.nio.file.Paths.get(uri)
+          val lines = java.nio.file.Files.readAllLines(file)
+          if (line < 1 || line > lines.size) sql
           else {
-            val fila = lineas.get(linea - 1).trim
-            if (!fila.startsWith("|") || !fila.contains("\\")) sql
+            val row = lines.get(line - 1).trim
+            if (!row.startsWith("|") || !row.contains("\\")) sql
             else
-              fila.split('|').map(_.trim).filter(_.contains("\\")).foldLeft(sql) { (acc, crudo) =>
-                val comido = crudo.replace("\\\\", "\\")
-                if (comido.nonEmpty && comido != crudo) acc.replace(comido, crudo) else acc
+              row.split('|').map(_.trim).filter(_.contains("\\")).foldLeft(sql) { (acc, raw) =>
+                val eaten = raw.replace("\\\\", "\\")
+                if (eaten.nonEmpty && eaten != raw) acc.replace(eaten, raw) else acc
               }
           }
         } catch { case NonFatal(_) => sql }
-      reparado
+      repaired
   }
 
   After { (_: io.cucumber.scala.Scenario) =>
-    finales.foreach(sql =>
+    finalStatements.foreach(sql =>
       try spark.sql(sql).collect()
       catch { case NonFatal(_) => () }
     ) // cleanup must not fail the scenario
-    finales = Nil
+    finalStatements = Nil
     // Restore configs in reverse, so nested overrides unwind correctly.
-    configTocada.reverse.foreach { case (clave, anterior) =>
+    touchedConfig.reverse.foreach { case (key, previous) =>
       try
-        anterior match {
-          case Some(v) => spark.conf.set(clave, v)
-          case None    => spark.conf.unset(clave)
+        previous match {
+          case Some(v) => spark.conf.set(key, v)
+          case None    => spark.conf.unset(key)
         }
       catch { case NonFatal(_) => () }
     }
-    configTocada = Nil
+    touchedConfig = Nil
   }
 
   Given("""^statement with error (.*)$""") { (pattern: String, sql: String) =>
@@ -351,30 +351,30 @@ final class QuerySteps extends ScalaDsl with EN {
   }
 
   Then("""^query result row where "(.+)" is "(.+)" has "(.+)" equal to "(.*)"$""") {
-    (columnaClave: String, valorClave: String, columna: String, esperado: String) =>
+    (keyColumn: String, keyValue: String, column: String, expected: String) =>
       assert(
-        celda(columnaClave, valorClave, columna) == esperado,
-        s"$columna in the row where $columnaClave=$valorClave " +
-          s"is ${celda(columnaClave, valorClave, columna)}, expected $esperado"
+        cell(keyColumn, keyValue, column) == expected,
+        s"$column in the row where $keyColumn=$keyValue " +
+          s"is ${cell(keyColumn, keyValue, column)}, expected $expected"
       )
   }
 
   Then("""^query result row where "(.+)" is "(.+)" has "(.+)" containing "(.*)"$""") {
-    (columnaClave: String, valorClave: String, columna: String, esperado: String) =>
-      val real = celda(columnaClave, valorClave, columna)
-      assert(real.contains(esperado), s"$columna is $real, expected it to contain $esperado")
+    (keyColumn: String, keyValue: String, column: String, expected: String) =>
+      val real = cell(keyColumn, keyValue, column)
+      assert(real.contains(expected), s"$column is $real, expected it to contain $expected")
   }
 
-  /** El valor de `columna` en la fila donde `columnaClave` vale `valorClave`. */
-  private def celda(columnaClave: String, valorClave: String, columna: String): String = {
-    val filas = df.collect().toSeq
-    val i = df.columns.indexOf(columnaClave)
-    val j = df.columns.indexOf(columna)
-    assert(i >= 0, s"no column named $columnaClave in ${df.columns.toSeq}")
-    assert(j >= 0, s"no column named $columna in ${df.columns.toSeq}")
-    filas.find(f => render(f.get(i)) == valorClave) match {
+  /** El valor de `column` en la row donde `keyColumn` vale `keyValue`. */
+  private def cell(keyColumn: String, keyValue: String, column: String): String = {
+    val rows = df.collect().toSeq
+    val i = df.columns.indexOf(keyColumn)
+    val j = df.columns.indexOf(column)
+    assert(i >= 0, s"no column named $keyColumn in ${df.columns.toSeq}")
+    assert(j >= 0, s"no column named $column in ${df.columns.toSeq}")
+    rows.find(f => render(f.get(i)) == keyValue) match {
       case Some(f) => render(f.get(j))
-      case None    => throw new AssertionError(s"no row where $columnaClave=$valorClave")
+      case None    => throw new AssertionError(s"no row where $keyColumn=$keyValue")
     }
   }
 
@@ -386,8 +386,8 @@ final class QuerySteps extends ScalaDsl with EN {
     * engine instead of a scenario that forgot to clean up after itself.
     */
   Given("""^config (\S+) = (.*)$""") { (key: String, value: String) =>
-    val anterior = Try(spark.conf.get(key)).toOption
-    configTocada = configTocada :+ ((key, anterior))
+    val previous = Try(spark.conf.get(key)).toOption
+    touchedConfig = touchedConfig :+ ((key, previous))
     spark.conf.set(key, value.trim)
   }
 
@@ -396,7 +396,7 @@ final class QuerySteps extends ScalaDsl with EN {
   // but whose rows blow up (a decimal overflow, say) would be reported as a
   // schema failure. Each step forces exactly what it needs.
   When("""query""") { (sql: String) =>
-    result = Try(spark.sql(repararEscapes(sql)))
+    result = Try(spark.sql(repairEscapes(sql)))
   }
 
   Then("""query schema""") { (expected: String) =>
@@ -407,18 +407,18 @@ final class QuerySteps extends ScalaDsl with EN {
     )
   }
 
-  Then("""query result""") { (table: DataTable) => comparar(table, ordered = false) }
+  Then("""query result""") { (table: DataTable) => compare(table, ordered = false) }
 
-  Then("""query result ordered""") { (table: DataTable) => comparar(table, ordered = true) }
+  Then("""query result ordered""") { (table: DataTable) => compare(table, ordered = true) }
 
   // A separate step upstream, and separate here: this one does collect, and
   // formats NULL and booleans the way their `_format_collected_value` does.
   Then("""query result collected""") { (table: DataTable) =>
-    compararColeccionado(table, ordered = false)
+    compareCollected(table, ordered = false)
   }
 
   Then("""query result collected ordered""") { (table: DataTable) =>
-    compararColeccionado(table, ordered = true)
+    compareCollected(table, ordered = true)
   }
 
   Then("""^query error (.*)$""") { (pattern: String) =>

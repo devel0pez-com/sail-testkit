@@ -32,8 +32,18 @@ trait SailSuite extends BeforeAndAfterAll { this: Suite =>
     session
   }
 
-  /** The server backing `spark`, in case a test needs its url. */
-  protected def sailServer: SailServer = server
+  /** The server backing `spark`, in case a test needs its url.
+    *
+    * Fails the same way `spark` does rather than handing back a null: a null
+    * here surfaces as an NPE somewhere else entirely, and the reader has to
+    * work back to "you asked before beforeAll ran".
+    */
+  protected def sailServer: SailServer = {
+    if (server == null) {
+      throw new IllegalStateException("No server yet: it is started in beforeAll")
+    }
+    server
+  }
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

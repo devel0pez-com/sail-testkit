@@ -26,7 +26,7 @@ object SailWorld {
 
   lazy val spark: SparkSession = synchronized {
     val session = SparkSession.builder().remote(server.url).getOrCreate()
-    configurar(session)
+    configure(session)
     startedSpark = Some(session)
     session
   }
@@ -38,7 +38,7 @@ object SailWorld {
     * session. ANSI mode in particular decides whether an operation raises or returns NULL, which is
     * exactly what the `try_*` scenarios are about.
     */
-  private def configurar(session: SparkSession): Unit = {
+  private def configure(session: SparkSession): Unit = {
     session.conf.set("spark.sql.session.timeZone", "UTC")
     session.conf.set("spark.sql.ansi.enabled", "true")
   }
