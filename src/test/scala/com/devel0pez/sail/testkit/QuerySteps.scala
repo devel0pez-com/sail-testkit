@@ -216,7 +216,7 @@ final class QuerySteps extends ScalaDsl with EN {
       case "sql"      => sql
       case "uri"      => uri
       case "file_uri" => fileUri
-      case other       => throw new AssertionError(s"unknown path property: $other")
+      case other      => throw new AssertionError(s"unknown path property: $other")
     }
   }
 
