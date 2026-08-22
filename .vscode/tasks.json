@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "test",
+      "detail": "The kit's own tests (fast, no corpus)",
+      "type": "shell",
+      "command": "nix develop --command sbt -batch test",
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": "$scalac"
+    },
+    {
+      "label": "corpus",
+      "detail": "Sail's feature corpus, as a report — never fails the build",
+      "type": "shell",
+      "command": "nix develop --command sbt -batch corpus",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "corpus (one slice)",
+      "detail": "One directory of the corpus, e.g. function/features/math",
+      "type": "shell",
+      "command": "nix develop --command sbt -batch 'testOnly *SailCorpusTest' -Dcucumber.features=sail-features/python/pysail/tests/${input:slice}",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "compile",
+      "type": "shell",
+      "command": "nix develop --command sbt -batch compile Test/compile",
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      "problemMatcher": "$scalac"
+    },
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "nix develop --command scalafmt .",
+      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "sail server",
+      "detail": "A Sail server in the foreground, for SPARK_REMOTE",
+      "type": "shell",
+      "command": "nix develop --command sail spark server",
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "slice",
+      "type": "promptString",
+      "description": "Corpus directory under sail-features/python/pysail/tests/",
+      "default": "spark/function/features/math"
+    }
+  ]
+}

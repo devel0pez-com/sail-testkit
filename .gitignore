@@ -20,3 +20,8 @@ spark-warehouse/
 #
 # Python bytecode from the submodule's tree, which is checked out but never run.
 sail-features/**/__pycache__/
+
+# direnv's cache of the evaluated devshell. Local to this machine, and it holds
+# links into /nix/store that mean nothing anywhere else.
+.direnv/
+.envrc.local

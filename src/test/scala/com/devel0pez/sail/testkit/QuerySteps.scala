@@ -396,7 +396,24 @@ final class QuerySteps extends ScalaDsl with EN {
   // but whose rows blow up (a decimal overflow, say) would be reported as a
   // schema failure. Each step forces exactly what it needs.
   When("""query""") { (sql: String) =>
-    result = Try(spark.sql(repairEscapes(sql)))
+    val prepared = repairEscapes(sql)
+    result = Try(spark.sql(prepared))
+    dumpSchema(prepared)
+  }
+
+  /** Records `sql -> schema` when `-Dsail.schemaDump=<file>` is set.
+    *
+    * The corpus only asserts a type where a scenario says `query schema` —
+    * 853 of its 4.972. Everywhere else it compares rows, and rows are compared
+    * as text, so `decimal(29,2)` and `decimal(20,2)` render identically and
+    * pass. Dumping the schema of **every** query and diffing two runs turns
+    * that 17% into 100% without touching the corpus or inventing expected
+    * values: whatever the two engines disagree on is a divergence by
+    * construction.
+    */
+  private def dumpSchema(sql: String): Unit = SchemaDump.file.foreach { path =>
+    val schema = result.map(_.schema.catalogString).getOrElse("<unresolved>")
+    SchemaDump.write(path, sql, schema)
   }
 
   Then("""query schema""") { (expected: String) =>

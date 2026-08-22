@@ -101,6 +101,10 @@ lazy val root = (project in file("."))
       .get("cucumber.filter.tags")
       .map(v => s"-Dcucumber.filter.tags=$v")
       .toSeq,
+    Test / javaOptions ++= sys.props
+      .get("sail.schemaDump")
+      .map(v => s"-Dsail.schemaDump=$v")
+      .toSeq,
     Test / baseDirectory := (ThisBuild / baseDirectory).value,
     scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlint")
   )

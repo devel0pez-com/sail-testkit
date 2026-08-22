@@ -41,6 +41,56 @@ SailServer.withServer { server =>
 }
 ```
 
+## What will not run, and why
+
+Pointing an existing suite at Sail works for far more than you would guess, but
+there is one hard line: **anything that ships JVM bytecode to the engine**.
+
+Spark Connect sends the query as a plan, and a closure is not an expression —
+it travels as a `ScalaUDF` message carrying the serialised function. A regular
+Connect server is a JVM, so it deserialises it and runs it. Sail is Rust and
+has nothing to run it with, so it refuses from the server side:
+
+```
+SparkUnsupportedOperationException: Scala UDF is not supported yet   # udf(), groupByKey
+SparkUnsupportedOperationException: wildcard with plan id            # map, typed filter
+```
+
+The second one is worth knowing by sight: it names neither UDFs nor closures,
+because Sail gives up while resolving the plan rather than on the UDF itself.
+
+In practice, on Sail:
+
+| | |
+| --- | --- |
+| `df.as[T]`, `Seq[T].toDS()` | works — encoders are a client-side matter |
+| `select`, `filter`, `join`, `groupBy` with **columns** | works |
+| `insertInto`, `saveAsTable`, reading back as `Dataset[T]` | works |
+| `map(x => ...)`, `filter(_.field > 0)`, `groupByKey` | **fails** |
+| Scala UDFs | **fails** |
+| RDDs | **fails** — no RDD API over Connect at all |
+
+So a suite written against typed lambdas will not run, and that is worth
+knowing before you spend an afternoon on it. A suite written with columns will,
+types and all.
+
+Worth saying plainly: this is not a Sail limitation you are working around. A
+typed `map` has always been opaque to Catalyst — it cannot see through the
+closure to push a filter or prune a column — so the column form is the one you
+wanted anyway. Sail just makes the cost visible.
+
+## Reporting what you find
+
+The report groups failures **by cause**, and it does that on purpose. One
+missing coercion can fail hundreds of scenarios, and hundreds of issues for one
+bug helps nobody. File one issue per cause, with the smallest query that shows
+it.
+
+And check the pairing first: the corpus and the `pysail` binary must come from
+the same Sail release. Running a newer corpus against an older binary reports
+every fix that landed in between as though it were a bug — see
+[docs/CORPUS.md](docs/CORPUS.md).
+
 ## Requirements
 
 - **A Sail binary on the PATH**: `pip install pysail`, or point `SAIL_BIN` at it.
