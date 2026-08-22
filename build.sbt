@@ -34,9 +34,18 @@ ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost
 // sbt-ci-release ends a tagged release by running `sonaRelease`, a command no
 // published version of sbt-sonatype defines: without this the build signs and
 // stages correctly and then dies on the last step with "Not a valid command".
-// `sonatypeCentralRelease` is the Central Portal equivalent, and it uploads the
-// same bundle directory that ci-release staged into.
-addCommandAlias("sonaRelease", "sonatypeCentralRelease")
+// Both Central Portal commands upload the same bundle directory ci-release
+// staged into; they differ in what happens next.
+//
+// `sonatypeCentralUpload`, not `sonatypeCentralRelease`, on purpose: it stops
+// the deployment at VALIDATED, so signatures, sources, javadoc and the POM can
+// be read in the Portal before anything reaches Maven Central. From there it is
+// one click to publish, or Drop and it never existed. `sonatypeCentralRelease`
+// publishes as soon as validation passes, and Maven Central is immutable — a
+// version that goes out cannot be replaced or withdrawn. The reversible path is
+// the better default; a release that should skip the hold can override the
+// whole command for that run with `CI_SONATYPE_RELEASE=sonatypeCentralRelease`.
+addCommandAlias("sonaRelease", "sonatypeCentralUpload")
 
 ThisBuild / developers := List(
   Developer(

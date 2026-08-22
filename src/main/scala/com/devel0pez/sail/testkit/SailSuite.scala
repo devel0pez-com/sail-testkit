@@ -1,5 +1,7 @@
 package com.devel0pez.sail.testkit
 
+import scala.util.control.NonFatal
+
 import org.apache.spark.sql.SparkSession
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
@@ -70,9 +72,23 @@ trait SailSuite extends BeforeAndAfterAll { this: Suite =>
     configureSession(session)
   }
 
+  /** Each resource is torn down independently, and the server goes last.
+    *
+    * Chaining them meant a throw from `session.stop()` skipped `server.close()`, and a Sail server
+    * that is never closed does not die with the JVM: it is a child process, so it outlives the run
+    * and keeps holding its port and its memory. Stopping a session that is already gone is the
+    * likeliest way to reach that, which is the worst possible trade — losing a teardown error
+    * nobody can act on in exchange for leaking a process.
+    *
+    * `close()` is deliberately left unguarded. A session that will not stop is noise; a server that
+    * will not close is the failure this method exists to prevent, and it should be heard.
+    */
   override protected def afterAll(): Unit =
     try {
-      if (session != null) session.stop()
+      if (session != null) {
+        try session.stop()
+        catch { case NonFatal(_) => () }
+      }
       if (server != null) server.close()
     } finally super.afterAll()
 }
