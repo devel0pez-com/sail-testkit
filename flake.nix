@@ -88,8 +88,24 @@
             {
               category = "test";
               name = "tfs";
-              help = "Run another slice, e.g. tfs spark/function/features/string";
-              command = ''sbt -batch "testOnly *SailCorpusTest -- --plugin summary" -Dcucumber.features="sail-features/"'';
+              help = "Run one slice, e.g. tfs spark/function/features/string";
+              # The path is relative to the corpus root, so what you type
+              # matches what the feature tree looks like in the submodule.
+              # `-D` goes before the task: sbt reads anything after it as
+              # another command.
+              command = ''
+                if [ $# -eq 0 ]; then
+                  echo "usage: tfs <path under sail-features/python/pysail/tests/>" >&2
+                  echo "   eg. tfs spark/function/features/string" >&2
+                  exit 2
+                fi
+                slice="sail-features/python/pysail/tests/$1"
+                if [ ! -e "$slice" ]; then
+                  echo "no such slice: $slice" >&2
+                  exit 2
+                fi
+                sbt -batch -Dcucumber.features="$slice" corpus
+              '';
             }
             {
               category = "build";
@@ -108,12 +124,6 @@
               name = "f";
               help = "Format with scalafmt";
               command = ''scalafmt "''${@:-.}"'';
-            }
-            {
-              category = "lint";
-              name = "fc";
-              help = "Check formatting without writing";
-              command = ''scalafmt --test "''${@:-.}"'';
             }
             {
               category = "release";

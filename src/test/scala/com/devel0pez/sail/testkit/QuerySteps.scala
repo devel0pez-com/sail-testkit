@@ -109,7 +109,7 @@ final class QuerySteps extends ScalaDsl with EN {
           if (a + 1 <= line.length) line.slice(a + 1, math.min(b, line.length)).trim else ""
         }
         .toSeq
-    // border, header, border, datos..., border
+    // border, header, border, rows..., border
     (Seq(cells(lines(1))) ++ lines.slice(3, lines.length - 1).map(cells)).toSeq
   }
 
@@ -234,8 +234,12 @@ final class QuerySteps extends ScalaDsl with EN {
     *
     * Not a template engine: the corpus only ever asks for a path rendered one of four ways, and
     * pulling in a real Jinja port for that would be a dependency in a test kit that ships none.
+    *
+    * Not called `render`: overloading the cell renderer above meant a `String` argument silently
+    * picked this one instead, so a value containing `{{` would have been templated on its way to a
+    * comparison. The two do unrelated jobs and no longer share a name.
     */
-  private def render(text: String): String =
+  private def renderTemplate(text: String): String =
     """\{\{\s*(\w+)\.(\w+)\s*\}\}""".r.replaceAllIn(
       text,
       m => {
@@ -248,15 +252,15 @@ final class QuerySteps extends ScalaDsl with EN {
     )
 
   Given("""statement template""") { (sql: String) =>
-    spark.sql(render(repairEscapes(sql))).collect()
+    spark.sql(renderTemplate(repairEscapes(sql))).collect()
   }
 
   When("""query template""") { (sql: String) =>
-    result = Try(spark.sql(render(repairEscapes(sql))))
+    result = Try(spark.sql(renderTemplate(repairEscapes(sql))))
   }
 
   Given("""final statement template""") { (sql: String) =>
-    finalStatements = finalStatements :+ render(repairEscapes(sql))
+    finalStatements = finalStatements :+ renderTemplate(repairEscapes(sql))
   }
 
   Given("""statement""") { (sql: String) =>
@@ -365,7 +369,7 @@ final class QuerySteps extends ScalaDsl with EN {
       assert(real.contains(expected), s"$column is $real, expected it to contain $expected")
   }
 
-  /** El valor de `column` en la row donde `keyColumn` vale `keyValue`. */
+  /** The value of `column` in the row where `keyColumn` is `keyValue`. */
   private def cell(keyColumn: String, keyValue: String, column: String): String = {
     val rows = df.collect().toSeq
     val i = df.columns.indexOf(keyColumn)
@@ -403,17 +407,15 @@ final class QuerySteps extends ScalaDsl with EN {
 
   /** Records `sql -> schema` when `-Dsail.schemaDump=<file>` is set.
     *
-    * The corpus only asserts a type where a scenario says `query schema` —
-    * 853 of its 4.972. Everywhere else it compares rows, and rows are compared
-    * as text, so `decimal(29,2)` and `decimal(20,2)` render identically and
-    * pass. Dumping the schema of **every** query and diffing two runs turns
-    * that 17% into 100% without touching the corpus or inventing expected
-    * values: whatever the two engines disagree on is a divergence by
-    * construction.
+    * The corpus only asserts a type where a scenario says `query schema` — 901 of its 4.972.
+    * Everywhere else it compares rows, and rows are compared as text, so `decimal(29,2)` and
+    * `decimal(20,2)` render identically and pass. Dumping the schema of **every** query and diffing
+    * two runs turns that 18% into 100% without touching the corpus or inventing expected values:
+    * whatever the two engines disagree on is a divergence by construction.
     */
-  private def dumpSchema(sql: String): Unit = SchemaDump.file.foreach { path =>
+  private def dumpSchema(sql: String): Unit = if (SchemaDump.enabled) {
     val schema = result.map(_.schema.catalogString).getOrElse("<unresolved>")
-    SchemaDump.write(path, sql, schema)
+    SchemaDump.write(sql, schema)
   }
 
   Then("""query schema""") { (expected: String) =>

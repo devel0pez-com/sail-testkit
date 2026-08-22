@@ -6,8 +6,14 @@
       "detail": "The kit's own tests (fast, no corpus)",
       "type": "shell",
       "command": "nix develop --command sbt -batch test",
-      "group": { "kind": "test", "isDefault": true },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
       "problemMatcher": "$scalac"
     },
     {
@@ -16,7 +22,10 @@
       "type": "shell",
       "command": "nix develop --command sbt -batch corpus",
       "group": "test",
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
       "problemMatcher": []
     },
     {
@@ -25,22 +34,34 @@
       "type": "shell",
       "command": "nix develop --command sbt -batch 'testOnly *SailCorpusTest' -Dcucumber.features=sail-features/python/pysail/tests/${input:slice}",
       "group": "test",
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
       "problemMatcher": []
     },
     {
       "label": "compile",
       "type": "shell",
       "command": "nix develop --command sbt -batch compile Test/compile",
-      "group": { "kind": "build", "isDefault": true },
-      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
       "problemMatcher": "$scalac"
     },
     {
       "label": "format",
       "type": "shell",
       "command": "nix develop --command scalafmt .",
-      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
       "problemMatcher": []
     },
     {
@@ -49,7 +70,10 @@
       "type": "shell",
       "command": "nix develop --command sail spark server",
       "isBackground": true,
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
       "problemMatcher": []
     }
   ],
@@ -60,5 +84,10 @@
       "description": "Corpus directory under sail-features/python/pysail/tests/",
       "default": "spark/function/features/math"
     }
-  ]
+  ],
+  "options": {
+    "env": {
+      "PATH": "/nix/var/nix/profiles/default/bin:${env:HOME}/.nix-profile/bin:${env:PATH}"
+    }
+  }
 }

@@ -26,6 +26,9 @@ It is a verbatim copy. The moment a file is touched, a difference stops meaning
 ## What is run, and what is not
 
 Only `spark/function/` — 4.972 scenarios of pure SQL in, rows or schema out.
+Counted as Cucumber runs them, one per Examples row: 2.960 are declared in the
+files, and the corpus as a whole is 5.522 against 3.494. Every figure in this
+repo uses the expanded basis, because that is the number a report prints.
 The rest (delta, iceberg, catalog, dml) drives real tables, temporary
 directories and external catalogs like Glue and Unity through steps such as
 `Given variable location for temporary directory ...`. Running those without

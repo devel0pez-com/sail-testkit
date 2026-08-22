@@ -65,7 +65,7 @@ separately for the same reason.
   expectation look like a NULL the engine failed to produce.
 - **Cucumber unescapes `\\` in Examples tables; pytest-bdd does not.** So
   `'(\\d+)'` arrives as `(\d+)`, Spark eats the backslash too, and the regex
-  becomes `(d+)`. `QuerySteps.repararEscapes` reads the row back from the file
+  becomes `(d+)`. `QuerySteps.repairEscapes` reads the row back from the file
   to undo it. Docstrings are not unescaped by anyone, which is why the same
   patterns work there.
 - **The JVM renders timestamps in its own zone.** Setting the session time zone

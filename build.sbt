@@ -105,6 +105,13 @@ lazy val root = (project in file("."))
       .get("sail.schemaDump")
       .map(v => s"-Dsail.schemaDump=$v")
       .toSeq,
+    // Same forwarding, for running one slice of the corpus instead of all of
+    // it. Cucumber lets `cucumber.features` override the `features` in the
+    // annotation, but only if the property reaches the JVM that runs it.
+    Test / javaOptions ++= sys.props
+      .get("cucumber.features")
+      .map(v => s"-Dcucumber.features=$v")
+      .toSeq,
     Test / baseDirectory := (ThisBuild / baseDirectory).value,
     scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlint")
   )
