@@ -5,6 +5,7 @@ import java.net.{ConnectException, InetSocketAddress, ServerSocket, Socket}
 import java.nio.charset.StandardCharsets
 import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
@@ -58,15 +59,30 @@ object SailServer {
   def version: Option[String] =
     try {
       val process = new ProcessBuilder(binary, "--version").redirectErrorStream(true).start()
-      val text =
-        try new String(process.getInputStream.readAllBytes(), StandardCharsets.UTF_8)
-        finally process.getInputStream.close()
+      // Read on a thread rather than inline. `readAllBytes` blocks until the stream closes, which
+      // for a process that never exits is never — so reading first would hang here and `waitFor`
+      // would not get the chance to time out, which is the one thing it exists for. Draining in
+      // parallel also keeps a chatty binary from filling the pipe and wedging itself, the same
+      // reason `spawn` has a reader thread.
+      val collected = new AtomicReference[String]("")
+      val reader = new Thread(
+        () =>
+          try
+            collected.set(new String(process.getInputStream.readAllBytes(), StandardCharsets.UTF_8))
+          catch { case NonFatal(_) => () },
+        "sail-version"
+      )
+      reader.setDaemon(true)
+      reader.start()
       if (!process.waitFor(VersionTimeout.toSeconds, TimeUnit.SECONDS)) {
         process.destroyForcibly()
         None
       } else {
+        // It has exited, so the reader is at EOF and about to finish; the join is a formality with
+        // a bound on it rather than a wait of unknown length.
+        reader.join(1000)
         // `sail --version` prints `sail 0.7.1`; keep only what a human would call the version.
-        text.trim.linesIterator.toSeq.headOption
+        collected.get.trim.linesIterator.toSeq.headOption
           .map(_.trim.split("\\s+").last)
           .filter(_.nonEmpty)
       }

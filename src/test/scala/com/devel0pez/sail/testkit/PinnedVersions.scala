@@ -7,9 +7,9 @@ import scala.util.control.NonFatal
 
 /** What `versions.json` pins, read the same way `build.sbt` and `flake.nix` read it.
   *
-  * A regex rather than a JSON parser, matching what `build.sbt` already does: the file is four flat
-  * string fields, and a test kit that ships no dependencies has no business pulling one in to read
-  * them.
+  * A regex rather than a JSON parser, matching what `build.sbt` already does: the file is a handful
+  * of flat string fields, and a test kit that ships no dependencies has no business pulling one in
+  * to read them.
   */
 object PinnedVersions {
 
