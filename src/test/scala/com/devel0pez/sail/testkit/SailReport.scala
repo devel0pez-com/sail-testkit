@@ -101,12 +101,29 @@ final class SailReport extends ConcurrentEventListener with ColorAware {
     if (i < 0) "?" else p.substring(i + 10).split('/').head
   }
 
+  /** What produced these numbers, printed with them.
+    *
+    * A report is meant to be diffed against one from another Sail release, and until now it
+    * recorded nothing about which release that was. Two saved reports were indistinguishable, so
+    * comparing them meant trusting memory or digging through git history.
+    *
+    * The engine version is read from the binary, not from `versions.json`: the point is what
+    * actually ran, and the two can disagree — which is what the check in `SailHooks` is about.
+    */
+  private def provenance: String = {
+    val engine = SailServer.version.map("sail " + _).getOrElse("sail (unknown)")
+    val corpus = PinnedVersions.corpusTag.map("corpus " + _).getOrElse("corpus (unpinned)")
+    val client = PinnedVersions.spark.map("spark-connect-client-jvm " + _).getOrElse("client ?")
+    s"$engine · $corpus · $client"
+  }
+
   private def printReport(): Unit = {
     val total = states.values.sum
     val ok = states("passed")
     out.println()
     out.println("=" * 62)
     out.println(s"  Sail compatibility report — $total scenarios")
+    out.println(s"  $provenance")
     out.println("=" * 62)
     val summary = states.toSeq.sortBy(-_._2).map { case (k, v) => f"$v%d $k" }.mkString("   ")
     out.println(s"  $summary")

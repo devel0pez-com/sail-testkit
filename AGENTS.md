@@ -132,8 +132,8 @@ was not.
 
 ## Comparing types across the whole corpus
 
-The corpus asserts a type only where a scenario says `query schema` — 901 of
-its 4.972. Everywhere else it compares rows as text, so `decimal(29,2)` and
+The corpus asserts a type only where a scenario says `query schema` — 926 of
+its 5.232. Everywhere else it compares rows as text, so `decimal(29,2)` and
 `decimal(20,2)` render identically and pass. To cover the rest:
 
 ```bash
