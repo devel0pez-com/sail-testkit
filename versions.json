@@ -2,8 +2,8 @@
   "_comment": "Single source of truth. build.sbt reads the Spark and Scala versions; flake.nix installs the matching Sail server. Sail resolves its Spark version from the pyspark module on the server side, so these must move together.",
   "scala": "2.13.18",
   "spark": "4.2.0",
-  "pysail": "0.7.0",
+  "pysail": "0.7.1",
   "_corpus": "The feature corpus must come from the SAME Sail release as the pysail binary. Running HEAD's corpus against 0.7.0 reports fixes that landed after the release as if they were bugs.",
-  "sailCorpusTag": "v0.7.0",
-  "sailCorpusCommit": "f0b137d6f261a25dc431a37e2f20bd01e12a0c4f"
+  "sailCorpusTag": "v0.7.1",
+  "sailCorpusCommit": "9544c9253e981a82c5f9e493c43ce98a4d9d41b7"
 }

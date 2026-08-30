@@ -5,6 +5,7 @@ import java.net.{ConnectException, InetSocketAddress, ServerSocket, Socket}
 import java.nio.charset.StandardCharsets
 import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
@@ -46,6 +47,47 @@ object SailServer {
   /** The Sail binary. Comes from the `pysail` wheel; override with `SAIL_BIN`. */
   def binary: String = sys.env.getOrElse("SAIL_BIN", "sail")
 
+  /** The version the binary reports, e.g. `0.7.1`, or `None` if it cannot be asked.
+    *
+    * Worth having because nothing else can tell you. The client talks Spark Connect, so
+    * `spark.version` answers with Spark's version, not Sail's — and a bug report that names the
+    * wrong one sends everybody to the wrong changelog.
+    *
+    * `None` rather than a throw: this is a diagnostic, and failing to read a version should never
+    * be the reason a suite goes red. `start()` is where a missing binary is reported properly.
+    */
+  def version: Option[String] =
+    try {
+      val process = new ProcessBuilder(binary, "--version").redirectErrorStream(true).start()
+      // Read on a thread rather than inline. `readAllBytes` blocks until the stream closes, which
+      // for a process that never exits is never — so reading first would hang here and `waitFor`
+      // would not get the chance to time out, which is the one thing it exists for. Draining in
+      // parallel also keeps a chatty binary from filling the pipe and wedging itself, the same
+      // reason `spawn` has a reader thread.
+      val collected = new AtomicReference[String]("")
+      val reader = new Thread(
+        () =>
+          try
+            collected.set(new String(process.getInputStream.readAllBytes(), StandardCharsets.UTF_8))
+          catch { case NonFatal(_) => () },
+        "sail-version"
+      )
+      reader.setDaemon(true)
+      reader.start()
+      if (!process.waitFor(VersionTimeout.toSeconds, TimeUnit.SECONDS)) {
+        process.destroyForcibly()
+        None
+      } else {
+        // It has exited, so the reader is at EOF and about to finish; the join is a formality with
+        // a bound on it rather than a wait of unknown length.
+        reader.join(1000)
+        // `sail --version` prints `sail 0.7.1`; keep only what a human would call the version.
+        collected.get.trim.linesIterator.toSeq.headOption
+          .map(_.trim.split("\\s+").last)
+          .filter(_.nonEmpty)
+      }
+    } catch { case NonFatal(_) => None }
+
   /** Address of an already-running server. Set it in CI to share one server. */
   val RemoteEnvVar = "SPARK_REMOTE"
 
@@ -54,6 +96,9 @@ object SailServer {
 
   /** How many lines of server output to keep for diagnostics. */
   private val TailLines = 20
+
+  /** Asking for a version should be instant; this only bounds a binary that hangs. */
+  private val VersionTimeout: FiniteDuration = 10.seconds
 
   /** Returns a server ready to accept connections.
     *

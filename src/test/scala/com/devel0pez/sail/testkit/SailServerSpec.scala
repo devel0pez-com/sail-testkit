@@ -1,10 +1,11 @@
 package com.devel0pez.sail.testkit
 
+import org.scalatest.OptionValues
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 /** Tests for the launcher itself: it starts, it stops, it tells you why not. */
-final class SailServerSpec extends AnyFunSuite with Matchers {
+final class SailServerSpec extends AnyFunSuite with Matchers with OptionValues {
 
   test("starts a server and hands out an sc:// url") {
     SailServer.withServer { server =>
@@ -73,6 +74,18 @@ final class SailServerSpec extends AnyFunSuite with Matchers {
     path.toFile.setExecutable(true)
     path.toFile.deleteOnExit()
     path.toString
+  }
+
+  test("reports the version the binary answers with") {
+    // Not compared against versions.json here: this asserts the accessor works, and
+    // PinnedVersionsSpec is where the pairing itself is checked.
+    SailServer.version.value should fullyMatch regex """\d+\.\d+\.\d+.*"""
+  }
+
+  test("returns no version rather than failing when the binary is missing") {
+    // A diagnostic must never be the reason a suite goes red; `start()` is what reports a
+    // missing binary properly, and the test below covers that.
+    withEnv("SAIL_BIN" -> "sail-that-does-not-exist")(SailServer.version) shouldBe None
   }
 
   test("says what to install when the binary is missing") {

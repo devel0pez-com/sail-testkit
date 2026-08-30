@@ -19,9 +19,9 @@ import org.junit.runner.RunWith
   *   dropped 103 scenarios that Sail handles perfectly well and reported them as though they did
   *   not exist.
   *
-  * Scoped to `function/`, which is 4.972 of the corpus's 5.522 scenarios and the only part that is
+  * Scoped to `function/`, which is 5.232 of the corpus's 5.864 scenarios and the only part that is
   * pure SQL in, rows or schema out. Those are Examples rows, which is what Cucumber actually runs —
-  * the declared counts are 2.960 and 3.494, and mixing the two bases is how the numbers in here
+  * the declared counts are 3.169 and 3.781, and mixing the two bases is how the numbers in here
   * drifted apart before. The rest — delta, iceberg, catalog, dml — drives real tables, temporary
   * directories and external catalogs (Glue, Unity) through steps like `Given variable location for
   * temporary directory ...`. Running those without that harness reports infrastructure we never set
