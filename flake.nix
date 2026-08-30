@@ -128,6 +128,12 @@
               command = ''scalafmt "''${@:-.}"'';
             }
             {
+              category = "env";
+              name = "check-commands";
+              help = "Smoke-test the commands in this menu";
+              command = ''"$PRJ_ROOT"/scripts/check-commands.sh'';
+            }
+            {
               category = "release";
               name = "publish-local";
               help = "Publish to the local ivy repo, to try it from another project";

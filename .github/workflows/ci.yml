@@ -5,21 +5,70 @@ on:
     branches: [main, master]
   pull_request:
 
+# A new push to a pull request makes the run in flight pointless, and on an
+# iterative branch that is most of them. Never cancel on master: those runs are
+# the record.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+# Four jobs off one filter rather than four steps in a row:
+#
+#   setup ──┬── test      the kit's own suite. This one gates.
+#           ├── corpus    a report, not a gate. Slowest by far.
+#           ├── format    seconds, and needs nothing.
+#           └── commands  the devshell menu, actually run.
+#
+# Sequential, `scalafmt --test` came last and a misplaced brace was reported
+# only after several thousand corpus scenarios had finished. Now it lands in
+# about a minute, and a red square says which of the four is unhappy without
+# opening a log.
+#
+# Only `corpus` and `commands` check out the submodule. It is a full clone of
+# lakehq/sail, and the kit's own tests never read it — the feature path is a
+# string in an annotation, not a compile-time dependency.
 jobs:
-  test:
+  setup:
+    name: setup
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      # A pull request that only edits prose does not need the corpus run
+      # against it, and used to get it anyway.
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          # The feature corpus is a submodule. Without this it arrives empty
-          # and the corpus job reports zero scenarios instead of failing
-          # loudly, which is worse.
-          submodules: recursive
+          filters: |
+            code:
+              - '**/*.scala'
+              - 'build.sbt'
+              - 'project/**'
+              - 'versions.json'
+              - 'flake.nix'
+              - 'flake.lock'
+              - '.scalafmt.conf'
+              - 'scripts/**'
+              - '.github/workflows/**'
+              - 'sail-features'
+
+  test:
+    name: test
+    needs: setup
+    if: ${{ needs.setup.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
-      # Without this every run re-downloads the Spark Connect client.
       - uses: actions/cache@v6
         with:
           path: |
@@ -27,12 +76,95 @@ jobs:
             ~/.sbt
           key: sbt-${{ runner.os }}-${{ hashFiles('build.sbt', 'versions.json', 'project/plugins.sbt', 'project/build.properties') }}
           restore-keys: sbt-${{ runner.os }}-
-      # The Sail server venv depends only on the declared versions.
+      # Keyed on versions.json alone: that file is what decides what goes in it.
       - uses: actions/cache@v6
         with:
           path: .venv
           key: sail-${{ runner.os }}-${{ hashFiles('versions.json') }}
       - run: nix develop --command sbt -batch test
-      # A report, not a gate: it exits 0 whatever it finds.
+
+  corpus:
+    name: corpus
+    needs: setup
+    if: ${{ needs.setup.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Without this the corpus arrives empty and reports zero scenarios
+          # instead of failing loudly, which is worse.
+          submodules: recursive
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/coursier
+            ~/.sbt
+          key: sbt-${{ runner.os }}-${{ hashFiles('build.sbt', 'versions.json', 'project/plugins.sbt', 'project/build.properties') }}
+          restore-keys: sbt-${{ runner.os }}-
+      - uses: actions/cache@v6
+        with:
+          path: .venv
+          key: sail-${{ runner.os }}-${{ hashFiles('versions.json') }}
+      # A report, not a gate: the `corpus` task swallows the result, because a
+      # divergence nobody here can fix must not block a release.
       - run: nix develop --command sbt -batch corpus
+      # The report used to be generated and thrown away, which left nothing to
+      # diff between Sail releases — the thing it exists for. It carries its own
+      # provenance header, so a downloaded one says which engine produced it.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corpus-report
+          path: target/corpus-report.*
+          if-no-files-found: warn
+
+  format:
+    name: format
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      # No caches: scalafmt needs neither sbt nor the Sail venv, and restoring
+      # them would cost more than the check.
       - run: nix develop --command scalafmt --test .
+
+  commands:
+    name: commands
+    needs: setup
+    if: ${{ needs.setup.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # `check-commands` runs a corpus slice, so it needs the features.
+          submodules: recursive
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/coursier
+            ~/.sbt
+          key: sbt-${{ runner.os }}-${{ hashFiles('build.sbt', 'versions.json', 'project/plugins.sbt', 'project/build.properties') }}
+          restore-keys: sbt-${{ runner.os }}-
+      - uses: actions/cache@v6
+        with:
+          path: .venv
+          key: sail-${{ runner.os }}-${{ hashFiles('versions.json') }}
+      # `tfs` was broken and advertised for weeks: it ignored its argument and
+      # ran the whole corpus. It was on PATH and exited zero the entire time,
+      # so nothing but running it could have noticed.
+      - run: nix develop --command check-commands
