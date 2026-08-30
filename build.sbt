@@ -48,14 +48,23 @@ ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost
 // Both Central Portal commands upload the same bundle directory ci-release
 // staged into; they differ in what happens next.
 //
-// `sonatypeCentralUpload`, not `sonatypeCentralRelease`, on purpose: it stops
-// the deployment at VALIDATED, so signatures, sources, javadoc and the POM can
-// be read in the Portal before anything reaches Maven Central. From there it is
-// one click to publish, or Drop and it never existed. `sonatypeCentralRelease`
-// publishes as soon as validation passes, and Maven Central is immutable — a
-// version that goes out cannot be replaced or withdrawn. The reversible path is
-// the better default; a release that should skip the hold can override the
-// whole command for that run with `CI_SONATYPE_RELEASE=sonatypeCentralRelease`.
+// `sonatypeCentralUpload`, not `sonatypeCentralRelease`: it asks for the
+// deployment to be held at VALIDATED for a look before anything reaches Maven
+// Central, where `sonatypeCentralRelease` publishes the moment validation passes.
+//
+// It asks, and does not get. Measured on the v0.1.0-M1 tag: the deployment went
+// VALIDATING -> PUBLISHING with no stop, and landed on Central. Something on the
+// account or the namespace overrides what the client requests, so the hold is a
+// preference the server is free to ignore.
+//
+// Which means: PUSHING A TAG PUBLISHES, IRREVERSIBLY. Maven Central never
+// replaces or withdraws a version. Do not tag expecting to look first and decide
+// after — that decision is made when you push.
+//
+// The reversibility you actually have is the version number. A `-M1` or `-RC1`
+// is permanent too, but it is a version nobody resolves by accident and costs
+// nothing to abandon. Spend those while unsure, and keep the bare number for
+// when you are not.
 addCommandAlias("sonaRelease", "sonatypeCentralUpload")
 
 ThisBuild / developers := List(
