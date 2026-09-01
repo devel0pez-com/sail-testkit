@@ -116,7 +116,7 @@ jobs:
       # The report used to be generated and thrown away, which left nothing to
       # diff between Sail releases — the thing it exists for. It carries its own
       # provenance header, so a downloaded one says which engine produced it.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: corpus-report
