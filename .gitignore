@@ -25,3 +25,4 @@ sail-features/**/__pycache__/
 # links into /nix/store that mean nothing anywhere else.
 .direnv/
 .envrc.local
+project/metals.sbt
