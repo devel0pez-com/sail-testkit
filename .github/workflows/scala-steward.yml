@@ -8,6 +8,18 @@ on:
 jobs:
   scala-steward:
     runs-on: ubuntu-latest
+    # The bot commits a branch and opens a pull request, and the repository
+    # default for GITHUB_TOKEN is read-only, so without this the run gets all
+    # the way to `git push` and dies with a 403 that names github-actions[bot].
+    # Granted here rather than by loosening the repository-wide default, which
+    # would hand write access to every other workflow as well.
+    #
+    # Opening the pull request needs one more thing that cannot be set from
+    # here: Settings -> Actions -> General -> "Allow GitHub Actions to create
+    # and approve pull requests".
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
       - uses: scala-steward-org/scala-steward-action@v2
