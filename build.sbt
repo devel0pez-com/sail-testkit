@@ -119,7 +119,7 @@ lazy val root = (project in file("."))
       // launcher works, their corpus passes over a JVM client the same way it
       // does over the Python one.
       "io.cucumber" %% "cucumber-scala" % "8.39.7" % Test,
-      "io.cucumber" % "cucumber-junit" % "7.34.7" % Test,
+      "io.cucumber" % "cucumber-junit" % "7.34.8" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test
     ),
     // The corpus is a report, not a gate: it runs Sail's own feature files
