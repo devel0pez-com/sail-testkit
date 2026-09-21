@@ -81,7 +81,7 @@ ThisBuild / developers := List(
 ThisBuild / javaHome := sys.env.get("JAVA_HOME").map(file)
 
 val sparkVersion = versionOf("spark")
-val scalaTestVersion = "3.2.19"
+val scalaTestVersion = "3.2.20"
 
 // Spark and Arrow reach into JDK internals that are closed off since Java 17.
 // `spark-submit` passes these itself; from sbt they have to be set by hand, or
