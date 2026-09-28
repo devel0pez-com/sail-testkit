@@ -48,7 +48,7 @@ final class QuerySteps extends ScalaDsl with EN {
     // `immutable.Seq`, and the Connect client hands back `mutable.ArraySeq`,
     // so the case silently fell through to `toString` and printed
     // `ArraySeq(1, 2)` where Spark prints `[1, 2]`.
-    case s: scala.collection.Seq[_] => s.map(render).mkString("[", ", ", "]")
+    case s: scala.collection.Seq[_]    => s.map(render).mkString("[", ", ", "]")
     case m: scala.collection.Map[_, _] =>
       m.map { case (k, v) => s"${render(k)} -> ${render(v)}" }.mkString("{", ", ", "}")
     // Spark prints a struct with braces; `Row.toString` uses brackets.
@@ -168,7 +168,7 @@ final class QuerySteps extends ScalaDsl with EN {
     import org.apache.spark.sql.functions.{col, lit, to_timestamp, try_to_timestamp}
     val r = spark.range(1)
     val d = kase match {
-      case "null literal" => r.select(lit(null).as("result"))
+      case "null literal"                  => r.select(lit(null).as("result"))
       case "null literal alias projection" =>
         r.select(lit(null).as("value")).select(col("value").as("result"))
       case "null literal with column"  => r.withColumn("result", lit(null)).select("result")
@@ -295,7 +295,7 @@ final class QuerySteps extends ScalaDsl with EN {
     * in docstrings and work fine today.
     */
   private def repairEscapes(sql: String): String = source match {
-    case None => sql
+    case None              => sql
     case Some((uri, line)) =>
       val repaired =
         try {
