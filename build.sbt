@@ -81,7 +81,7 @@ ThisBuild / developers := List(
 ThisBuild / javaHome := sys.env.get("JAVA_HOME").map(file)
 
 val sparkVersion = versionOf("spark")
-val scalaTestVersion = "3.2.19"
+val scalaTestVersion = "3.2.20"
 
 // Spark and Arrow reach into JDK internals that are closed off since Java 17.
 // `spark-submit` passes these itself; from sbt they have to be set by hand, or
@@ -119,7 +119,7 @@ lazy val root = (project in file("."))
       // launcher works, their corpus passes over a JVM client the same way it
       // does over the Python one.
       "io.cucumber" %% "cucumber-scala" % "8.39.7" % Test,
-      "io.cucumber" % "cucumber-junit" % "7.34.7" % Test,
+      "io.cucumber" % "cucumber-junit" % "7.34.8" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test
     ),
     // The corpus is a report, not a gate: it runs Sail's own feature files
