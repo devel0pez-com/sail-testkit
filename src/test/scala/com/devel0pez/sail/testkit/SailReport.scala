@@ -68,7 +68,7 @@ final class SailReport extends ConcurrentEventListener with ColorAware {
         verdicts("not portable to a JVM client") += 1
       // A Sail extension failing against Sail is its own thing, and lumping it
       // in with untagged failures would inflate the only number that matters.
-      case (_, _, true) => verdicts("@sail-only failing") += 1
+      case (_, _, true)  => verdicts("@sail-only failing") += 1
       case (_, false, _) =>
         verdicts("UNTAGGED failure (new divergence?)") += 1
         causes(cause) += 1
@@ -81,7 +81,7 @@ final class SailReport extends ConcurrentEventListener with ColorAware {
     * hundreds of failures, and grouping makes that obvious instead of hiding it in the noise.
     */
   private def causeOf(error: Option[Throwable]): String = error.map(_.toString) match {
-    case None => "undefined step"
+    case None                                             => "undefined step"
     case Some(m) if m.contains("Unsupported Vector Type") =>
       "arrow: vector the JVM client cannot read"
     case Some(m) if m.contains("ClassCastException")         => "arrow: vector cast"
