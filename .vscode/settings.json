@@ -14,5 +14,10 @@
   // formatted.
   "search.exclude": { "sail-features/**": true },
   "editor.formatOnSave": true,
-  "[scala]": { "editor.defaultFormatter": "scalameta.metals" }
+  "[scala]": {
+    "editor.defaultFormatter": "scalameta.metals"
+  },
+  "files.watcherExclude": {
+    "**/target/**": true
+  }
 }
