@@ -407,10 +407,10 @@ final class QuerySteps extends ScalaDsl with EN {
 
   /** Records `sql -> schema` when `-Dsail.schemaDump=<file>` is set.
     *
-    * The corpus only asserts a type where a scenario says `query schema` — 926 of its 5.232.
+    * The corpus only asserts a type where a scenario says `query schema` — 983 of its 5.914.
     * Everywhere else it compares rows, and rows are compared as text, so `decimal(29,2)` and
     * `decimal(20,2)` render identically and pass. Dumping the schema of **every** query and diffing
-    * two runs turns that 18% into 100% without touching the corpus or inventing expected values:
+    * two runs turns that 17% into 100% without touching the corpus or inventing expected values:
     * whatever the two engines disagree on is a divergence by construction.
     */
   private def dumpSchema(sql: String): Unit = if (SchemaDump.enabled) {
