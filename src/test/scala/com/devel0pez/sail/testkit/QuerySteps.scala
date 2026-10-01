@@ -48,7 +48,7 @@ final class QuerySteps extends ScalaDsl with EN {
     // `immutable.Seq`, and the Connect client hands back `mutable.ArraySeq`,
     // so the case silently fell through to `toString` and printed
     // `ArraySeq(1, 2)` where Spark prints `[1, 2]`.
-    case s: scala.collection.Seq[_] => s.map(render).mkString("[", ", ", "]")
+    case s: scala.collection.Seq[_]    => s.map(render).mkString("[", ", ", "]")
     case m: scala.collection.Map[_, _] =>
       m.map { case (k, v) => s"${render(k)} -> ${render(v)}" }.mkString("{", ", ", "}")
     // Spark prints a struct with braces; `Row.toString` uses brackets.
@@ -168,7 +168,7 @@ final class QuerySteps extends ScalaDsl with EN {
     import org.apache.spark.sql.functions.{col, lit, to_timestamp, try_to_timestamp}
     val r = spark.range(1)
     val d = kase match {
-      case "null literal" => r.select(lit(null).as("result"))
+      case "null literal"                  => r.select(lit(null).as("result"))
       case "null literal alias projection" =>
         r.select(lit(null).as("value")).select(col("value").as("result"))
       case "null literal with column"  => r.withColumn("result", lit(null)).select("result")
@@ -295,7 +295,7 @@ final class QuerySteps extends ScalaDsl with EN {
     * in docstrings and work fine today.
     */
   private def repairEscapes(sql: String): String = source match {
-    case None => sql
+    case None              => sql
     case Some((uri, line)) =>
       val repaired =
         try {
@@ -407,10 +407,10 @@ final class QuerySteps extends ScalaDsl with EN {
 
   /** Records `sql -> schema` when `-Dsail.schemaDump=<file>` is set.
     *
-    * The corpus only asserts a type where a scenario says `query schema` — 926 of its 5.232.
+    * The corpus only asserts a type where a scenario says `query schema` — 983 of its 5.914.
     * Everywhere else it compares rows, and rows are compared as text, so `decimal(29,2)` and
     * `decimal(20,2)` render identically and pass. Dumping the schema of **every** query and diffing
-    * two runs turns that 18% into 100% without touching the corpus or inventing expected values:
+    * two runs turns that 17% into 100% without touching the corpus or inventing expected values:
     * whatever the two engines disagree on is a divergence by construction.
     */
   private def dumpSchema(sql: String): Unit = if (SchemaDump.enabled) {
