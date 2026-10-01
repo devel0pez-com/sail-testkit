@@ -8,8 +8,19 @@ with. This is that missing piece: it starts `sail spark server`, hands you the
 url, and shuts it down when the suite ends.
 
 ```scala
-libraryDependencies += "com.devel0pez" %% "sail-testkit" % "<version>" % Test
+libraryDependencies += "com.devel0pez" %% "sail-testkit" % "0.1.1" % Test
 ```
+
+Validated against **Sail 0.7.2** and **Spark 4.2.0** on Scala 2.13, by running
+Sail's own corpus — 5.914 scenarios — through this client.
+
+That is what it was tested with, not what it requires. The kit pins no Sail
+version — it starts whichever `sail` is on your PATH, or the one `SAIL_BIN`
+points at — and nothing in the published jar names one.
+
+What does have a floor is the Spark client you build against: 3.5.9, because
+that is where Sail's own supported range starts. Spark Connect existed in 3.4,
+but Sail does not test against it.
 
 ## Use it
 
