@@ -118,7 +118,7 @@ lazy val root = (project in file("."))
       // own `.feature` files are run through this kit as validation — if the
       // launcher works, their corpus passes over a JVM client the same way it
       // does over the Python one.
-      "io.cucumber" %% "cucumber-scala" % "8.39.7" % Test,
+      "io.cucumber" %% "cucumber-scala" % "8.39.8" % Test,
       "io.cucumber" % "cucumber-junit" % "7.34.8" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test
     ),
